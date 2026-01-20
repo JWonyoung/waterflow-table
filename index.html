@@ -3,135 +3,161 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Waterflow Monitor</title>
+<title>Water Flow Dashboard</title>
 <style>
-  body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f5f6fa; }
-  header { background:#0984e3; color:white; padding:15px; text-align:center; font-size:1.5em; font-weight:bold; }
-  nav { display:flex; justify-content:space-around; background:#00b894; color:white; }
-  nav button { background:none; border:none; color:white; padding:10px; font-size:1em; cursor:pointer; width:50%; }
-  nav button.active { background:#019874; font-weight:bold; }
-  main { padding:15px; }
-  table { width:100%; border-collapse:collapse; margin-top:10px; box-shadow:0 2px 5px rgba(0,0,0,0.1); border-radius:8px; overflow:hidden; }
-  th, td { padding:12px; text-align:center; }
-  th { background:#0984e3; color:white; position:sticky; top:0; }
-  tr:nth-child(even) { background:#dfe6e9; }
-  tr:nth-child(odd) { background:#ffffff; }
-  button.refresh { background:#00b894; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer; margin-bottom:10px; }
-  button.refresh:hover { background:#019874; }
-  .reading { font-size:1.2em; text-align:center; margin-top:20px; background:white; padding:15px; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.1);}
-  @media only screen and (max-width:600px) { th, td { font-size:0.9em; padding:8px; } button.refresh { width:100%; font-size:1em; } }
+    /* Reset & basic */
+    body { font-family: Arial, sans-serif; margin: 0; background-color: #f8f9fa; }
+    header { background-color: #007bff; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+    header h1 { margin: 0; font-size: 20px; }
+    nav { display: flex; gap: 10px; }
+    nav button { background: none; border: 1px solid white; color: white; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+    nav button.active { background-color: white; color: #007bff; }
+    nav button:hover { opacity: 0.9; }
+
+    .container { padding: 20px; }
+    .cards { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; margin-bottom: 20px; }
+    .card { flex: 1 1 150px; min-width: 150px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; }
+    .card h2 { margin: 10px 0; font-size: 28px; color: #007bff; }
+    .card p { margin: 0; font-size: 14px; color: #555; }
+
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: center; font-size: 14px; }
+    th { background-color: #007bff; color: white; }
+    tbody tr:nth-child(even) { background-color: #f2f2f2; }
+
+    footer { text-align: center; padding: 15px; color: #777; margin-top: 20px; }
+
+    /* Responsive */
+    @media(max-width:600px){
+        .cards { flex-direction: column; align-items: center; }
+        header { flex-direction: column; align-items: flex-start; gap: 10px; }
+    }
 </style>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
+<header>
+    <h1>Water Flow Dashboard</h1>
+    <nav>
+        <button id="dashboardBtn" class="active">Dashboard</button>
+        <button id="tableBtn">Table</button>
+    </nav>
+</header>
 
-<header>Waterflow Monitor</header>
+<div class="container">
+    <!-- Dashboard Section -->
+    <div id="dashboardSection">
+        <div class="cards">
+            <div class="card">
+                <h2 id="totalLiters">0</h2>
+                <p>Total Liters Today</p>
+            </div>
+            <div class="card">
+                <h2 id="totalOccurrences">0</h2>
+                <p>Total Occurrences Today</p>
+            </div>
+            <div class="card">
+                <h2 id="lastUpdate">-</h2>
+                <p>Last Updated</p>
+            </div>
+        </div>
+    </div>
 
-<nav>
-  <button id="homeBtn" class="active" onclick="showPage('home')">Current Reading</button>
-  <button id="historyBtn" onclick="showPage('history')">History</button>
-</nav>
+    <!-- Table Section -->
+    <div id="tableSection" style="display:none;">
+        <p>Last updated: <span id="tableLastUpdated">Loading...</span></p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Minute Start ISO</th>
+                    <th>Weekday</th>
+                    <th>Time (H:MM)</th>
+                    <th>Occurrences</th>
+                    <th>Total Liters</th>
+                </tr>
+            </thead>
+            <tbody id="dataTable">
+                <tr><td colspan="5">Loading data...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 
-<main>
-  <!-- Homepage -->
-  <div id="homePage">
-    <button class="refresh" onclick="loadCurrentReading()">Refresh</button>
-    <div id="currentReading" class="reading">Loading latest reading...</div>
-  </div>
-
-  <!-- History Page -->
-  <div id="historyPage" style="display:none;">
-    <button class="refresh" onclick="loadHistory()">Refresh</button>
-    <table id="historyTable">
-      <thead>
-        <tr>
-          <th>Weekday</th>
-          <th>Time</th>
-          <th>Occurrences</th>
-          <th>Sum Liters</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td colspan="4">Loading...</td></tr>
-      </tbody>
-    </table>
-  </div>
-</main>
+<footer>© 2026 Water Flow Monitoring</footer>
 
 <script>
-const firebaseURL = "https://hello-f1194-default-rtdb.firebaseio.com/mobile_app/rows.json";
+    // Firebase configuration
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+        databaseURL: "https://hello-f1194-default-rtdb.firebaseio.com/",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT_ID.appspot.com",
+        messagingSenderId: "YOUR_SENDER_ID",
+        appId: "YOUR_APP_ID"
+    };
+    const app = firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
 
-// Navigation
-function showPage(page) {
-  document.getElementById('homePage').style.display = page === 'home' ? 'block' : 'none';
-  document.getElementById('historyPage').style.display = page === 'history' ? 'block' : 'none';
-  document.getElementById('homeBtn').classList.toggle('active', page==='home');
-  document.getElementById('historyBtn').classList.toggle('active', page==='history');
-}
+    const dashboardBtn = document.getElementById('dashboardBtn');
+    const tableBtn = document.getElementById('tableBtn');
+    const dashboardSection = document.getElementById('dashboardSection');
+    const tableSection = document.getElementById('tableSection');
 
-// Load current reading (true latest)
-async function loadCurrentReading() {
-    const div = document.getElementById('currentReading');
-    div.textContent = "Loading latest reading...";
-    try {
-        const res = await fetch(firebaseURL);
-        const data = await res.json();
-        if (!data || data.length === 0) {
-            div.textContent = "No readings available.";
-            return;
-        }
+    dashboardBtn.addEventListener('click', () => {
+        dashboardSection.style.display = 'block';
+        tableSection.style.display = 'none';
+        dashboardBtn.classList.add('active');
+        tableBtn.classList.remove('active');
+    });
+    tableBtn.addEventListener('click', () => {
+        dashboardSection.style.display = 'none';
+        tableSection.style.display = 'block';
+        tableBtn.classList.add('active');
+        dashboardBtn.classList.remove('active');
+    });
 
-        // Find the latest by minute_start_iso
-        const latest = data.reduce((a, b) => {
-            if (!a.minute_start_iso) return b;
-            if (!b.minute_start_iso) return a;
-            return new Date(a.minute_start_iso) > new Date(b.minute_start_iso) ? a : b;
+    function loadData() {
+        const ref = database.ref('/mobile_app');
+        ref.once('value', snapshot => {
+            const data = snapshot.val();
+            if(!data || !data.rows) return;
+
+            // Dashboard
+            let totalLiters = 0;
+            let totalOccurrences = 0;
+            data.rows.forEach(row => {
+                totalLiters += row.sum_liters;
+                totalOccurrences += row.occurrences;
+            });
+            document.getElementById('totalLiters').textContent = totalLiters.toFixed(3);
+            document.getElementById('totalOccurrences').textContent = totalOccurrences;
+            document.getElementById('lastUpdate').textContent = data.updated_at || '-';
+
+            // Table
+            const tbody = document.getElementById('dataTable');
+            tbody.innerHTML = '';
+            data.rows.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.minute_start_iso}</td>
+                    <td>${row.weekday_name}</td>
+                    <td>${row.time_hmm}</td>
+                    <td>${row.occurrences}</td>
+                    <td>${row.sum_liters.toFixed(3)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            document.getElementById('tableLastUpdated').textContent = data.updated_at || '-';
         });
-
-        div.innerHTML = `
-          <strong>${latest.weekday_name} ${latest.time_hmm}</strong><br>
-          Total Liters: ${Number(latest.sum_liters).toFixed(3)}<br>
-          Occurrences: ${latest.occurrences}
-        `;
-    } catch (err) {
-        div.textContent = "Error loading reading: " + err;
     }
-}
 
-// Load full history
-async function loadHistory() {
-    const tbody = document.querySelector("#historyTable tbody");
-    tbody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
-    try {
-        const res = await fetch(firebaseURL);
-        const data = await res.json();
-        if (!data || data.length === 0) {
-            tbody.innerHTML = "<tr><td colspan='4'>No data available</td></tr>";
-            return;
-        }
-        tbody.innerHTML = "";
-        data.forEach(row => {
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-              <td>${row.weekday_name}</td>
-              <td>${row.time_hmm}</td>
-              <td>${row.occurrences}</td>
-              <td>${Number(row.sum_liters).toFixed(3)}</td>
-            `;
-            tbody.appendChild(tr);
-        });
-    } catch (err) {
-        tbody.innerHTML = `<tr><td colspan='4'>Error loading data: ${err}</td></tr>`;
-    }
-}
+    // Initial load
+    loadData();
 
-// Initial load
-window.onload = () => {
-  loadCurrentReading();
-  loadHistory();
-  // Auto-refresh every 60 seconds
-  setInterval(() => { loadCurrentReading(); loadHistory(); }, 60000);
-};
+    // Auto refresh every 60 seconds
+    setInterval(loadData, 60000);
 </script>
-
 </body>
 </html>
