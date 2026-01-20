@@ -68,7 +68,7 @@ function showPage(page) {
   document.getElementById('historyBtn').classList.toggle('active', page==='history');
 }
 
-// Load current reading
+// Load latest reading (by timestamp)
 async function loadCurrentReading() {
   const div = document.getElementById('currentReading');
   div.textContent = "Loading latest reading...";
@@ -79,8 +79,14 @@ async function loadCurrentReading() {
       div.textContent = "No readings available.";
       return;
     }
-    // Latest reading is the last in the array
-    const latest = data[data.length - 1];
+
+    // Find the latest record by timestamp
+    const latest = data.reduce((prev, current) => {
+        if (!prev.minute_start_iso) return current;
+        if (!current.minute_start_iso) return prev;
+        return new Date(prev.minute_start_iso) > new Date(current.minute_start_iso) ? prev : current;
+    });
+
     div.innerHTML = `
       <strong>${latest.weekday_name} ${latest.time_hmm}</strong><br>
       Total Liters: ${Number(latest.sum_liters).toFixed(3)}<br>
@@ -91,7 +97,7 @@ async function loadCurrentReading() {
   }
 }
 
-// Load history
+// Load history table
 async function loadHistory() {
   const tbody = document.querySelector("#historyTable tbody");
   tbody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
