@@ -1,68 +1,153 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Waterflow Mobile App Table</title>
-    <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        h1 { text-align: center; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-        th { background-color: #f2f2f2; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Waterflow Mobile App Table</title>
+  <style>
+    /* Reset and basic styling */
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f5f6fa;
+      color: #2f3640;
+      margin: 0;
+      padding: 0;
+    }
+    
+    header {
+      background-color: #0984e3;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-size: 1.5em;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    main {
+      padding: 15px;
+    }
+
+    button {
+      background-color: #00b894;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 1em;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+
+    button:hover {
+      background-color: #019874;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: center;
+    }
+
+    th {
+      background-color: #0984e3;
+      color: white;
+      font-weight: bold;
+      position: sticky;
+      top: 0;
+    }
+
+    tr:nth-child(even) {
+      background-color: #dfe6e9;
+    }
+
+    tr:nth-child(odd) {
+      background-color: #ffffff;
+    }
+
+    @media only screen and (max-width: 600px) {
+      th, td {
+        font-size: 0.9em;
+        padding: 8px;
+      }
+
+      header {
+        font-size: 1.2em;
+      }
+
+      button {
+        width: 100%;
+        font-size: 1em;
+      }
+    }
+
+  </style>
 </head>
 <body>
-    <h1>Waterflow Mobile App Table</h1>
+  <header>Waterflow Mobile App Table</header>
+  <main>
     <button onclick="loadData()">Refresh</button>
     <table id="dataTable">
-        <thead>
-            <tr>
-                <th>Weekday</th>
-                <th>Time</th>
-                <th>Occurrences</th>
-                <th>Sum Liters</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr><td colspan="4">Loading...</td></tr>
-        </tbody>
+      <thead>
+        <tr>
+          <th>Weekday</th>
+          <th>Time</th>
+          <th>Occurrences</th>
+          <th>Sum Liters</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="4">Loading...</td></tr>
+      </tbody>
     </table>
+  </main>
 
-    <script>
-        const firebaseURL = "https://hello-f1194-default-rtdb.firebaseio.com/mobile_app/rows.json";
+  <script>
+    const firebaseURL = "https://hello-f1194-default-rtdb.firebaseio.com/mobile_app/rows.json";
 
-        async function loadData() {
-            const tbody = document.querySelector("#dataTable tbody");
-            tbody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
+    async function loadData() {
+      const tbody = document.querySelector("#dataTable tbody");
+      tbody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
 
-            try {
-                const res = await fetch(firebaseURL);
-                const data = await res.json();
+      try {
+        const res = await fetch(firebaseURL);
+        const data = await res.json();
 
-                if (!data || data.length === 0) {
-                    tbody.innerHTML = "<tr><td colspan='4'>No data available</td></tr>";
-                    return;
-                }
-
-                tbody.innerHTML = "";
-                data.forEach(row => {
-                    const tr = document.createElement("tr");
-                    tr.innerHTML = `
-                        <td>${row.weekday_name}</td>
-                        <td>${row.time_hmm}</td>
-                        <td>${row.occurrences}</td>
-                        <td>${Number(row.sum_liters).toFixed(3)}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            } catch (err) {
-                tbody.innerHTML = `<tr><td colspan='4'>Error loading data: ${err}</td></tr>`;
-            }
+        if (!data || data.length === 0) {
+          tbody.innerHTML = "<tr><td colspan='4'>No data available</td></tr>";
+          return;
         }
 
-        // Load data when page opens
-        window.onload = loadData;
-    </script>
+        tbody.innerHTML = "";
+        data.forEach(row => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${row.weekday_name}</td>
+            <td>${row.time_hmm}</td>
+            <td>${row.occurrences}</td>
+            <td>${Number(row.sum_liters).toFixed(3)}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan='4'>Error loading data: ${err}</td></tr>`;
+      }
+    }
+
+    // Load data on page load
+    window.onload = loadData;
+
+    // Auto-refresh every 60 seconds
+    setInterval(loadData, 60000);
+  </script>
 </body>
 </html>
