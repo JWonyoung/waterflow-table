@@ -68,75 +68,67 @@ function showPage(page) {
   document.getElementById('historyBtn').classList.toggle('active', page==='history');
 }
 
-// Load latest reading
+// Load current reading (true latest)
 async function loadCurrentReading() {
-  const div = document.getElementById('currentReading');
-  div.textContent = "Loading latest reading...";
-  try {
-    const res = await fetch(firebaseURL);
-    const dataObj = await res.json();
-    if (!dataObj || Object.keys(dataObj).length === 0) {
-      div.textContent = "No readings available.";
-      return;
+    const div = document.getElementById('currentReading');
+    div.textContent = "Loading latest reading...";
+    try {
+        const res = await fetch(firebaseURL);
+        const data = await res.json();
+        if (!data || data.length === 0) {
+            div.textContent = "No readings available.";
+            return;
+        }
+
+        // Find the latest by minute_start_iso
+        const latest = data.reduce((a, b) => {
+            if (!a.minute_start_iso) return b;
+            if (!b.minute_start_iso) return a;
+            return new Date(a.minute_start_iso) > new Date(b.minute_start_iso) ? a : b;
+        });
+
+        div.innerHTML = `
+          <strong>${latest.weekday_name} ${latest.time_hmm}</strong><br>
+          Total Liters: ${Number(latest.sum_liters).toFixed(3)}<br>
+          Occurrences: ${latest.occurrences}
+        `;
+    } catch (err) {
+        div.textContent = "Error loading reading: " + err;
     }
-
-    // Convert object to array
-    const data = Object.values(dataObj);
-
-    // Find latest by timestamp
-    const latest = data.reduce((prev, current) => {
-        if (!prev.minute_start_iso) return current;
-        if (!current.minute_start_iso) return prev;
-        return new Date(prev.minute_start_iso) > new Date(current.minute_start_iso) ? prev : current;
-    });
-
-    div.innerHTML = `
-      <strong>${latest.weekday_name} ${latest.time_hmm}</strong><br>
-      Total Liters: ${Number(latest.sum_liters).toFixed(3)}<br>
-      Occurrences: ${latest.occurrences}
-    `;
-  } catch (err) {
-    div.textContent = "Error loading reading: " + err;
-  }
 }
 
-// Load history
+// Load full history
 async function loadHistory() {
-  const tbody = document.querySelector("#historyTable tbody");
-  tbody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
-  try {
-    const res = await fetch(firebaseURL);
-    const dataObj = await res.json();
-    if (!dataObj || Object.keys(dataObj).length === 0) {
-      tbody.innerHTML = "<tr><td colspan='4'>No data available</td></tr>";
-      return;
+    const tbody = document.querySelector("#historyTable tbody");
+    tbody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
+    try {
+        const res = await fetch(firebaseURL);
+        const data = await res.json();
+        if (!data || data.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='4'>No data available</td></tr>";
+            return;
+        }
+        tbody.innerHTML = "";
+        data.forEach(row => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td>${row.weekday_name}</td>
+              <td>${row.time_hmm}</td>
+              <td>${row.occurrences}</td>
+              <td>${Number(row.sum_liters).toFixed(3)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan='4'>Error loading data: ${err}</td></tr>`;
     }
-
-    const data = Object.values(dataObj);
-
-    // Sort by timestamp ascending
-    data.sort((a, b) => new Date(a.minute_start_iso) - new Date(b.minute_start_iso));
-
-    tbody.innerHTML = "";
-    data.forEach(row => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${row.weekday_name}</td>
-        <td>${row.time_hmm}</td>
-        <td>${row.occurrences}</td>
-        <td>${Number(row.sum_liters).toFixed(3)}</td>
-      `;
-      tbody.appendChild(tr);
-    });
-  } catch (err) {
-    tbody.innerHTML = `<tr><td colspan='4'>Error loading data: ${err}</td></tr>`;
-  }
 }
 
-// Initial load and auto-refresh
+// Initial load
 window.onload = () => {
   loadCurrentReading();
   loadHistory();
+  // Auto-refresh every 60 seconds
   setInterval(() => { loadCurrentReading(); loadHistory(); }, 60000);
 };
 </script>
